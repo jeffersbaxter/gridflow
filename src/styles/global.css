@@ -1,0 +1,49 @@
+:root {
+  /* Palette — deliberately not the AI-default cream/acid/broadsheet looks. */
+  --ink: #1b2138;
+  --ink-soft: #4a5168;
+  --ink-faint: #8b91a6;
+  --paper: #fbfbfd;
+  --surface: #ffffff;
+  --line: #e4e6ef;
+  --line-strong: #ccd0e0;
+
+  /* The "magic" layer — agents read as violet throughout. */
+  --magic: #6d5bd0;
+  --magic-soft: #efecfb;
+  --magic-ink: #4a3aa8;
+
+  /* Status signals. */
+  --green: #2e9e6b;
+  --green-soft: #e3f4ec;
+  --amber: #e8a33d;
+  --amber-soft: #fbf0db;
+  --red: #d3506a;
+  --red-soft: #fbe6eb;
+  --blue: #3d72c4;
+  --blue-soft: #e6eefa;
+
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(27, 33, 56, 0.06), 0 8px 24px rgba(27, 33, 56, 0.06);
+  --font-display: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+input { font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

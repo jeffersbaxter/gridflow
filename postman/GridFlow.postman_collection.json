@@ -1,0 +1,90 @@
+{
+  "info": {
+    "name": "GridFlow API",
+    "description": "Contract tests for the GridFlow task + agent-insight endpoints. Mirrors the JSON shapes asserted in src/api/contract.test.ts so the front-end and back-end stay in sync. Point {{baseUrl}} at the Kotlin/Java service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:8080" }],
+  "item": [
+    {
+      "name": "GET /tasks",
+      "request": { "method": "GET", "url": "{{baseUrl}}/tasks" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('has data array + meta', () => {",
+              "  pm.expect(body).to.have.property('data').that.is.an('array');",
+              "  pm.expect(body.meta.total).to.eql(body.data.length);",
+              "});",
+              "const STATUSES = ['not_started','in_progress','blocked','complete'];",
+              "const PRIORITIES = ['low','medium','high','critical'];",
+              "pm.test('every row matches the Task contract', () => {",
+              "  body.data.forEach(t => {",
+              "    pm.expect(t.id).to.be.a('string');",
+              "    pm.expect(t.name).to.be.a('string');",
+              "    pm.expect(t.assignee).to.be.a('string');",
+              "    pm.expect(STATUSES).to.include(t.status);",
+              "    pm.expect(PRIORITIES).to.include(t.priority);",
+              "    pm.expect(t.progress).to.be.within(0, 100);",
+              "    pm.expect(t.hasAgentInsight).to.be.a('boolean');",
+              "  });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /insights",
+      "request": { "method": "GET", "url": "{{baseUrl}}/insights" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('insight kinds + confidence are valid', () => {",
+              "  body.data.forEach(i => {",
+              "    pm.expect(['risk','automation','summary']).to.include(i.kind);",
+              "    pm.expect(i.confidence).to.be.within(0, 1);",
+              "  });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PATCH /tasks/:id",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"complete\"\n}" },
+        "url": "{{baseUrl}}/tasks/t-1"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const t = pm.response.json();",
+              "pm.test('completing forces progress to 100', () => {",
+              "  pm.expect(t.status).to.eql('complete');",
+              "  pm.expect(t.progress).to.eql(100);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
