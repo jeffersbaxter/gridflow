@@ -1,5 +1,7 @@
-import { useAppDispatch } from '../store/hooks';
+import { useMemo } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateTask } from '../features/sheet/sheetSlice';
+import { selectIsRowPending } from '../features/sheet/selectors';
 import { StatusBadge } from './StatusBadge';
 import type { AgentInsight, Priority, Task, TaskStatus } from '../types';
 import { AgentInsightRow } from './AgentInsightRow';
@@ -40,6 +42,8 @@ interface Props {
 
 export function TaskRow({ task, insight, onActOnInsight }: Props) {
   const dispatch = useAppDispatch();
+  const isPendingSelector = useMemo(() => selectIsRowPending(task.id), [task.id]);
+  const isPending = useAppSelector(isPendingSelector);
 
   const onStatusChange = (status: TaskStatus) => {
     dispatch(updateTask({ id: task.id, patch: { status } }));
@@ -47,8 +51,17 @@ export function TaskRow({ task, insight, onActOnInsight }: Props) {
 
   return (
     <>
-      <div className="row" data-testid="task-row">
-        <div className="cell-name">{task.name}</div>
+      <div
+        className={`row${isPending ? ' row--pending' : ''}`}
+        data-testid="task-row"
+        aria-busy={isPending}
+      >
+        <div className="cell-name">
+          {task.name}
+          {isPending && (
+            <span className="row__saving" role="status"> · saving…</span>
+          )}
+        </div>
         <div className="assignee">
           <span className="avatar" aria-hidden="true">{initials(task.assignee)}</span>
           {task.assignee}

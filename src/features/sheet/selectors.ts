@@ -38,3 +38,10 @@ export const selectInsightCount = createSelector(
   [selectAllTasks],
   (tasks): number => tasks.filter((t) => t.hasAgentInsight).length
 );
+
+export const selectPendingIds = (state: RootState) => state.sheet.pendingIds;
+
+export const selectRollbackMessage = (state: RootState) => state.sheet.rollbackMessage;
+
+export const selectIsRowPending = (id: string) => 
+  createSelector([selectPendingIds], (ids): boolean => ids.includes(id));

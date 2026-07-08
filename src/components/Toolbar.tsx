@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setQuery, setStatusFilter } from '../features/sheet/sheetSlice';
 import { selectQuery, selectStatusFilter } from '../features/sheet/selectors';
+import { failNextPatch } from '../api/client';
 import type { TaskStatus } from '../types';
 
 const FILTERS: Array<{ value: TaskStatus | 'all'; label: string }> = [
@@ -14,6 +16,13 @@ export function Toolbar() {
   const dispatch = useAppDispatch();
   const query = useAppSelector(selectQuery);
   const statusFilter = useAppSelector(selectStatusFilter);
+  const [failMode, setFailMode] = useState(false);
+
+  const toggleFailMode = () => {
+    const next = !failMode;
+    setFailMode(next);
+    failNextPatch(next);
+  };
 
   return (
     <div className="toolbar">
@@ -40,6 +49,15 @@ export function Toolbar() {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        className="chip chip--danger"
+        aria-pressed={failMode}
+        onClick={toggleFailMode}
+        title="When on, the next task edit will fail so you can see the optimistic update roll back."
+      >
+        {failMode ? '● Failure mode on' : 'Simulate failure'}
+      </button>
     </div>
   );
 }

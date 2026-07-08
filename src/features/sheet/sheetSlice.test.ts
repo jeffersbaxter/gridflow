@@ -1,6 +1,7 @@
 import reducer, {
   setQuery,
   setStatusFilter,
+  dismissRollback,
   fetchTasks,
   updateTask,
   type SheetState,
@@ -13,6 +14,9 @@ const initial: SheetState = {
   error: null,
   query: '',
   statusFilter: 'all',
+  pendingIds: [],
+  snapshots: {},
+  rollbackMessage: null,
 };
 
 const sampleTask: Task = {
@@ -65,24 +69,64 @@ describe('sheet reducer — fetchTasks lifecycle', () => {
   });
 });
 
-describe('sheet reducer — updateTask.fulfilled', () => {
-  it('replaces the matching task in place', () => {
-    const withTask = { ...initial, tasks: [sampleTask] };
-    const updated: Task = { ...sampleTask, status: 'complete', progress: 100 };
+describe('sheet reducer — optimistic updateTask', () => {
+  const withTask = { ...initial, tasks: [sampleTask] };
+
+  it('applies the patch immediately on pending and marks the row in-flight', () => {
     const next = reducer(withTask, {
-      type: updateTask.fulfilled.type,
-      payload: updated,
+      type: updateTask.pending.type,
+      meta: { arg: { id: 't-1', patch: { status: 'in_progress' } } },
     });
-    expect(next.tasks[0].status).toBe('complete');
+    expect(next.tasks[0].status).toBe('in_progress');
+    expect(next.pendingIds).toContain('t-1');
+  });
+
+  it('enforces the complete⇄100% rule during the optimistic apply', () => {
+    const next = reducer(withTask, {
+      type: updateTask.pending.type,
+      meta: { arg: { id: 't-1', patch: { status: 'complete' } } },
+    });
     expect(next.tasks[0].progress).toBe(100);
   });
 
-  it('leaves state untouched when id is unknown', () => {
-    const withTask = { ...initial, tasks: [sampleTask] };
-    const next = reducer(withTask, {
+  it('confirms with the server row and clears the in-flight flag on fulfilled', () => {
+    const pending = reducer(withTask, {
+      type: updateTask.pending.type,
+      meta: { arg: { id: 't-1', patch: { status: 'in_progress' } } },
+    });
+    const confirmed: Task = { ...sampleTask, status: 'in_progress', progress: 30 };
+    const next = reducer(pending, {
       type: updateTask.fulfilled.type,
-      payload: { ...sampleTask, id: 'other', status: 'blocked' },
+      payload: confirmed,
+    });
+    expect(next.tasks[0].progress).toBe(30);
+    expect(next.pendingIds).not.toContain('t-1');
+  });
+
+  it('rolls back to the snapshot and surfaces a message on rejected', () => {
+    // First optimistically move the row to 'complete'/100 — this also snapshots.
+    const pending = reducer(withTask, {
+      type: updateTask.pending.type,
+      meta: { arg: { id: 't-1', patch: { status: 'complete' } } },
+    });
+    expect(pending.tasks[0].status).toBe('complete');
+    expect(pending.snapshots['t-1']).toBeDefined();
+
+    // …then the server rejects; the reducer restores its own snapshot.
+    const next = reducer(pending, {
+      type: updateTask.rejected.type,
+      payload: { id: 't-1', message: 'Server said no' },
     });
     expect(next.tasks[0].status).toBe('not_started');
+    expect(next.tasks[0].progress).toBe(0);
+    expect(next.pendingIds).not.toContain('t-1');
+    expect(next.snapshots['t-1']).toBeUndefined();
+    expect(next.rollbackMessage).toBe('Server said no');
+  });
+
+  it('clears the rollback message via dismissRollback', () => {
+    const errored = { ...withTask, rollbackMessage: 'Server said no' };
+    const next = reducer(errored, dismissRollback());
+    expect(next.rollbackMessage).toBeNull();
   });
 });
