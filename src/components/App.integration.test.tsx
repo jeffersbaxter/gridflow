@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { renderWithStore, screen, waitFor, within } from '../test/renderWithStore';
+import { failNextPatch } from '../api/client';
 import { App } from '../App';
 
 // Integration test: mounts the whole app against the mock API and exercises a
@@ -88,5 +89,58 @@ describe('GridFlow integration', () => {
     await waitFor(() =>
       expect(within(insightStat).getByText('3')).toBeInTheDocument()
     );
+  });
+
+  it('applies a status edit optimistically before the server confirms', async () => {
+    const user = userEvent.setup();
+    renderWithStore(<App />);
+    await waitFor(() =>
+      expect(
+        screen.getByText('Write E2E test for sharing flow')
+      ).toBeInTheDocument()
+    );
+
+    const select = screen.getByLabelText(
+      'Status for Write E2E test for sharing flow'
+    ) as HTMLSelectElement;
+
+    // The change is reflected immediately (optimistically), and the row shows a
+    // saving cue while the write is in flight.
+    await user.selectOptions(select, 'in_progress');
+    expect(select.value).toBe('in_progress');
+
+    // Eventually the in-flight cue clears once the server confirms.
+    await waitFor(() =>
+      expect(screen.queryByText(/saving…/)).not.toBeInTheDocument()
+    );
+    expect(select.value).toBe('in_progress');
+  });
+
+  it('rolls back the optimistic edit and shows a toast when the server fails', async () => {
+    const user = userEvent.setup();
+    renderWithStore(<App />);
+    await waitFor(() =>
+      expect(
+        screen.getByText('Accessibility audit of toolbar')
+      ).toBeInTheDocument()
+    );
+
+    const select = screen.getByLabelText(
+      'Status for Accessibility audit of toolbar'
+    ) as HTMLSelectElement;
+    expect(select.value).toBe('not_started');
+
+    // Arm the next write to fail, then make the edit.
+    failNextPatch(true);
+    await user.selectOptions(select, 'complete');
+
+    // Optimistically it flips immediately…
+    expect(select.value).toBe('complete');
+
+    // …then the failure rolls it back to the original value and shows a toast.
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    );
+    await waitFor(() => expect(select.value).toBe('not_started'));
   });
 });

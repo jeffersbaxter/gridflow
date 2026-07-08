@@ -31,9 +31,17 @@ const insights: AgentInsight[] = [
   { id: 'a-3', taskId: 't-4', kind: 'automation', message: 'Blocked on a failing lint rule. I can open a PR pinning the ESLint version — approve to automate.', confidence: 0.76 },
 ];
 
-const LATENCY = 120;
+const LATENCY = 700;
 const delay = <T>(value: T): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), LATENCY));
+
+// Failure injection. Lets the UI (a "simulate server failure" toggle) and the
+// tests deterministically exercise the optimistic-update rollback path without
+// depending on flaky real-world network errors.
+let failNextPatchFlag = false;
+export function failNextPatch(shouldFail = true): void {
+  failNextPatchFlag = shouldFail;
+}
 
 function stamp<T>(data: T[]): ApiListResponse<T> {
   return { data, meta: { total: data.length, generatedAt: new Date().toISOString() } };
@@ -52,6 +60,13 @@ export const api = {
     const idx = tasks.findIndex((t) => t.id === id);
     if (idx === -1) {
       throw new Error(`Task ${id} not found`);
+    }
+    // Simulate a transient server-side write failure on demand. Reject after a
+    // short delay so the optimistic update has already been rendered.
+    if (failNextPatchFlag) {
+      failNextPatchFlag = false;
+      await delay(null);
+      throw new Error('The server rejected this change. Try again.');
     }
     const next: Task = { ...tasks[idx], ...patch };
     // Server-side rule: completing a task forces progress to 100 and vice versa.

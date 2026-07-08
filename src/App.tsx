@@ -1,6 +1,7 @@
 import { Toolbar } from './components/Toolbar';
 import { StatStrip } from './components/StatStrip';
 import { SheetGrid } from './components/SheetGrid';
+import { Toast } from './components/Toast';
 import './styles/app.css';
 
 export function App() {
@@ -22,6 +23,7 @@ export function App() {
       <StatStrip />
       <Toolbar />
       <SheetGrid />
+      <Toast />
 
       <p className="footnote">
         GridFlow · portfolio demo · React + TypeScript + Redux Toolkit, tested with Jest &amp; React Testing Library
